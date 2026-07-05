@@ -42,6 +42,7 @@ This project trains on the slippery version of the map. It is the harder, more r
 - `demo.py` renders the trained agent solving the environment and saves the result as `demo.gif`
 - `plot_training.py` plots the training curve from the saved reward history and saves `training_curve.png`
 - `sweep.py` the script I used to try out different hyperparameter combinations, not needed to reproduce the final results
+- `train_8x8.py`, `evaluate_8x8.py`, `demo_8x8.py`, `plot_training_8x8.py` the same pipeline as above but for the harder 8x8 map, see the 8x8 comparison section below
 
 ## Installation
 
@@ -81,6 +82,8 @@ Generate a GIF of the trained agent solving the environment:
 python3 demo.py
 ```
 
+The `_8x8` scripts (`train_8x8.py`, `evaluate_8x8.py`, `plot_training_8x8.py`, `demo_8x8.py`) work the same way, just on the 8x8 map, and are run the same way, e.g. `python3 train_8x8.py`.
+
 ## Hyperparameter Tuning
 
 After getting a working baseline, I wrote a small `sweep.py` script to try out different combinations of episodes, learning rate, discount factor (gamma), and epsilon decay, evaluating each one over 1000 greedy episodes instead of 100 so the success rate numbers weren't just noise. Gamma mattered the most out of everything I tried: dropping it from 0.99 to 0.95 or 0.9 consistently hurt performance, since a lower gamma makes the agent care less about the reward at the goal, which is far away in terms of steps. The best combination I found was 50,000 episodes, learning rate 0.1, gamma 0.99, and a slightly slower epsilon decay rate of 0.0001 (compared to 0.00015 in my first version), and I updated `train.py` to use these settings. `sweep.py` is left in the repo as the script I used to do this, it's not part of the main pipeline.
@@ -107,3 +110,24 @@ The curve shows the rolling average success rate over training. The agent starts
 ![Demo](demo.gif)
 
 Three episodes of the trained agent navigating the ice grid to reach the goal.
+
+## 8x8 Comparison
+
+I also trained the same Q-learning approach on the 8x8 version of the map (`train_8x8.py`), just to see how it holds up when the problem gets bigger. 8x8 has 64 states instead of 16, so the Q-table is 4x larger, the shortest path to the goal is much longer, and there are more holes to fall into along the way. All of that makes the exploration problem a lot harder: a random policy on 4x4 still stumbles into the goal every so often, but on 8x8 a random policy almost never reaches it (I measured about 1 in 900 random episodes reaching the goal), so the agent needs a lot more training just to see the reward even once before it can start learning from it.
+
+My first attempt just reused the tuned 4x4 hyperparameters as-is (150,000 episodes, same epsilon decay), and it completely failed to learn anything, 0% success the entire run. The epsilon decay was tuned for a 16-state problem and dropped exploration to almost nothing well before the agent had a real chance to stumble onto the goal even once in a 64-state maze. I slowed the epsilon decay down a lot (from 0.0001 to 0.00003) and bumped episodes up to 200,000 so the agent kept exploring for longer, and that was enough to get it learning properly.
+
+| Map | Success Rate | Average Steps | Episodes Trained |
+|---|---|---|---|
+| 4x4 | 73.8% | 45.5 | 50,000 |
+| 8x8 | 59.8% | 75.9 | 200,000 |
+
+The 8x8 agent needed 4x the training episodes and still landed at a lower success rate than 4x4, which is exactly what I'd expect: more states means more to learn, longer paths mean more chances for a slippery slide to send you into a hole, and the sparser reward signal makes early learning slower. It's a decent illustration of how plain tabular Q-learning starts to strain as the state space grows, even though the underlying algorithm is unchanged.
+
+### 8x8 Training Curve
+
+![8x8 training curve](training_curve_8x8.png)
+
+### 8x8 Demo
+
+![8x8 demo](demo_8x8.gif)
