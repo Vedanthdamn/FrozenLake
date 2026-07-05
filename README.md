@@ -1,2 +1,0 @@
-# FrozenLake
-SIGKDD Task

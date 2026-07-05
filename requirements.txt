@@ -1,0 +1,5 @@
+gymnasium[toy-text]==1.0.0
+numpy==1.26.4
+matplotlib==3.9.2
+imageio==2.35.1
+pygame==2.6.1
