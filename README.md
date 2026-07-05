@@ -41,6 +41,7 @@ This project trains on the slippery version of the map. It is the harder, more r
 - `evaluate.py` loads the saved Q-table and reports success rate and average steps, compared against a random policy baseline
 - `demo.py` renders the trained agent solving the environment and saves the result as `demo.gif`
 - `plot_training.py` plots the training curve from the saved reward history and saves `training_curve.png`
+- `sweep.py` the script I used to try out different hyperparameter combinations, not needed to reproduce the final results
 
 ## Installation
 
@@ -80,14 +81,18 @@ Generate a GIF of the trained agent solving the environment:
 python3 demo.py
 ```
 
+## Hyperparameter Tuning
+
+After getting a working baseline, I wrote a small `sweep.py` script to try out different combinations of episodes, learning rate, discount factor (gamma), and epsilon decay, evaluating each one over 1000 greedy episodes instead of 100 so the success rate numbers weren't just noise. Gamma mattered the most out of everything I tried: dropping it from 0.99 to 0.95 or 0.9 consistently hurt performance, since a lower gamma makes the agent care less about the reward at the goal, which is far away in terms of steps. The best combination I found was 50,000 episodes, learning rate 0.1, gamma 0.99, and a slightly slower epsilon decay rate of 0.0001 (compared to 0.00015 in my first version), and I updated `train.py` to use these settings. `sweep.py` is left in the repo as the script I used to do this, it's not part of the main pipeline.
+
 ## Results
 
-Evaluated over 100 episodes with a greedy policy (no exploration), compared to 100 episodes of a random policy baseline:
+Evaluated over 1000 episodes with a greedy policy (no exploration), compared to 1000 episodes of a random policy baseline. I bumped this up from 100 episodes in an earlier version since 100 episodes was giving noisy success rate estimates during tuning:
 
 | Policy | Success Rate | Average Steps |
 |---|---|---|
-| Random (before training) | 2.0% | 7.0 |
-| Trained Q-learning agent (after training) | 79.0% | 43.8 |
+| Random (before training) | 1.4% | 7.5 |
+| Trained Q-learning agent (after training) | 73.8% | 45.5 |
 
 The random policy almost always falls into a hole quickly. The trained agent reaches the goal in the large majority of episodes, and takes longer paths on average because it favors safer routes around holes rather than the shortest path, which matters on slippery ice where a shorter but riskier path is more likely to end in a fall.
 

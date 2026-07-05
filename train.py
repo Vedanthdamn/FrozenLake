@@ -14,7 +14,7 @@ discount_rate = 0.99
 epsilon = 1.0
 max_epsilon = 1.0
 min_epsilon = 0.01
-epsilon_decay_rate = 0.00015
+epsilon_decay_rate = 0.0001
 
 env = gym.make(env_name, map_name=map_name, is_slippery=is_slippery)
 
