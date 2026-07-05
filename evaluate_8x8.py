@@ -5,7 +5,7 @@ env_name = "FrozenLake-v1"
 map_name = "8x8"
 is_slippery = True
 
-num_eval_episodes = 1000
+num_eval_episodes = 2000
 max_steps_per_episode = 100
 
 env = gym.make(env_name, map_name=map_name, is_slippery=is_slippery)
