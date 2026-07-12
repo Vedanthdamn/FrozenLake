@@ -56,7 +56,7 @@ This project trains on the slippery version of the map. It is the harder, more r
 - `evaluate.py` loads the saved Q-table and reports success rate and average steps, compared against a random policy baseline
 - `demo.py` renders the trained agent solving the environment and saves the result as a GIF
 - `plot_training.py` plots the training curve from the saved reward history
-- `q_learning.py` the actual Q-learning building blocks (action selection, the Q-table update rule, epsilon decay), shared by `train.py`
+- `q_learning.py` the actual Q-learning building blocks (action selection, the Q-table update rule, epsilon decay), shared by `train.py` and covered by the unit tests in `tests/`
 - `frozenlake_common.py` shared config: hyperparameters per map/slippery setting and the output filenames each run produces
 - `sweep.py` the script I used to try out different hyperparameter combinations for 4x4 slippery, not needed to reproduce the final results
 - `plot_comparison.py` loads the reward history from all four configurations and plots them together on one chart, saved as `training_curve_comparison.png` (the chart in the Key Findings section above)
@@ -106,6 +106,17 @@ Swap in `--map 8x8` and/or `--no-slippery` to run any of the other three configu
 
 To reproduce all four result sets end to end (train, evaluate, plot, and demo, for all four configurations) in one command, run `./run_all.sh`. Note that the 8x8 slippery configuration alone takes several minutes since it trains for over a million episodes.
 
+## Testing
+
+There are a handful of unit tests in `tests/` covering the core Q-learning logic in `q_learning.py`: the Q-table update rule against a hand-calculable example, that epsilon-greedy action selection is fully random at epsilon=1 and fully greedy at epsilon=0, and that the epsilon decay schedule is monotonically decreasing and respects the minimum epsilon floor. These test the algorithm itself, not the environment.
+
+Install the test dependency and run them with:
+
+```
+pip install -r requirements-dev.txt
+pytest tests/
+```
+
 ## Hyperparameter Tuning
 
 After getting a working baseline, I wrote a small `sweep.py` script to try out different combinations of episodes, learning rate, discount factor (gamma), and epsilon decay, evaluating each one over 1000 greedy episodes instead of 100 so the success rate numbers weren't just noise. Gamma mattered the most out of everything I tried: dropping it from 0.99 to 0.95 or 0.9 consistently hurt performance, since a lower gamma makes the agent care less about the reward at the goal, which is far away in terms of steps. The best combination I found was 50,000 episodes, learning rate 0.1, gamma 0.99, and a slightly slower epsilon decay rate of 0.0001 (compared to 0.00015 in my first version), and I updated `train.py` to use these settings. `sweep.py` is left in the repo as the script I used to do this, it's not part of the main pipeline.
@@ -135,11 +146,11 @@ Three episodes of the trained agent navigating the ice grid to reach the goal.
 
 ## 8x8 Comparison
 
-I also trained the same Q-learning approach on the 8x8 version of the map (`train_8x8.py`), just to see how it holds up when the problem gets bigger. 8x8 has 64 states instead of 16, so the Q-table is 4x larger, the shortest path to the goal is much longer, and there are more holes to fall into along the way. All of that makes the exploration problem a lot harder: a random policy on 4x4 still stumbles into the goal every so often, but on 8x8 a random policy almost never reaches it (I measured about 1 in 900 random episodes reaching the goal), so the agent needs a lot more training just to see the reward even once before it can start learning from it.
+I also trained the same Q-learning approach on the 8x8 version of the map, just to see how it holds up when the problem gets bigger. 8x8 has 64 states instead of 16, so the Q-table is 4x larger, the shortest path to the goal is much longer, and there are more holes to fall into along the way. All of that makes the exploration problem a lot harder: a random policy on 4x4 still stumbles into the goal every so often, but on 8x8 a random policy almost never reaches it (I measured about 1 in 900 random episodes reaching the goal), so the agent needs a lot more training just to see the reward even once before it can start learning from it.
 
 It's a known fact for slippery FrozenLake that plain Q-learning tops out well below 100%, because the slip mechanic means even the optimal policy sometimes slides into a hole no matter what action it picks. For 4x4 that ceiling is commonly cited as around 70-75%, which lines up with the 73.8% I got. There's no equivalent published number for 8x8, so instead of guessing at a target I trained a lot longer and watched where the agent's performance actually leveled off, treating that leveling-off point as the empirical ceiling for this setup.
 
-To make that longer training run practical, I rewrote `train_8x8.py` to use `gymnasium`'s vectorized environments (128 environments stepped together at once) instead of one environment in a plain Python loop, which is what made it feasible to train for over a million episodes in a few minutes instead of tens of minutes. I also switched to optimistic Q-table initialization and a decaying learning rate, and tracked a rolling 5000-episode success rate plus a separate greedy-policy evaluation every 50,000 episodes to watch for a genuine plateau (as opposed to normal run-to-run noise). Training ran for 1,200,000 episodes and stopped once the smoothed greedy success rate stayed flat (within about 1 point) over the preceding 300,000 episodes, hovering in the high-40s to low-50s range from roughly episode 850,000 onward.
+To make that longer training run practical, I rewrote the 8x8 slippery training path to use `gymnasium`'s vectorized environments (128 environments stepped together at once) instead of one environment in a plain Python loop, which is what made it feasible to train for over a million episodes in a few minutes instead of tens of minutes. I also switched to optimistic Q-table initialization and a decaying learning rate, and tracked a rolling 5000-episode success rate plus a separate greedy-policy evaluation every 50,000 episodes to watch for a genuine plateau (as opposed to normal run-to-run noise). Training ran for 1,200,000 episodes and stopped once the smoothed greedy success rate stayed flat (within about 1 point) over the preceding 300,000 episodes, hovering in the high-40s to low-50s range from roughly episode 850,000 onward.
 
 | Map | Success Rate | Average Steps | Episodes Trained |
 |---|---|---|---|
@@ -158,7 +169,7 @@ The 8x8 agent needed 24x the training episodes and still landed at a meaningfull
 
 ## Deterministic (Non-Slippery) Comparison
 
-Everything above uses `is_slippery=True`, where the ice is slippery and a chosen action only succeeds with some probability, sometimes sliding the agent sideways instead. To see how much of the earlier success ceiling actually comes from that randomness, I trained the same Q-learning approach again with `is_slippery=False` on both maps (`train_4x4_deterministic.py`, `train_8x8_deterministic.py`). With slipping turned off, the environment becomes fully deterministic: whatever action the agent picks is exactly the action that happens, every time, no chance of sliding somewhere else. That removes the one source of failure that even an optimal policy can't avoid on the slippery map, so there's nothing stopping the agent from reaching 100%.
+Everything above uses `is_slippery=True`, where the ice is slippery and a chosen action only succeeds with some probability, sometimes sliding the agent sideways instead. To see how much of the earlier success ceiling actually comes from that randomness, I trained the same Q-learning approach again with `is_slippery=False` on both maps. With slipping turned off, the environment becomes fully deterministic: whatever action the agent picks is exactly the action that happens, every time, no chance of sliding somewhere else. That removes the one source of failure that even an optimal policy can't avoid on the slippery map, so there's nothing stopping the agent from reaching 100%.
 
 One thing that surprised me: I expected the 8x8 deterministic run to be simple since there's no randomness to fight, but a pure random policy still only reached the goal about 0.14% of the time, almost identical to the slippery version. Removing the slip mechanic doesn't make the map itself any smaller or the reward any less sparse, it just removes ONE source of difficulty. I had to slow down the epsilon decay and train longer (50,000 episodes instead of a naive few thousand) to give the agent enough random exploration to stumble onto the goal at least once, but once it did, learning was clean and fast since every successful path repeats exactly the same way every time.
 
