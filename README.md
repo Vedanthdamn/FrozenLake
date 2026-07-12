@@ -133,3 +133,34 @@ The 8x8 agent needed 24x the training episodes and still landed at a meaningfull
 ### 8x8 Demo
 
 ![8x8 demo](demo_8x8.gif)
+
+## Deterministic (Non-Slippery) Comparison
+
+Everything above uses `is_slippery=True`, where the ice is slippery and a chosen action only succeeds with some probability, sometimes sliding the agent sideways instead. To see how much of the earlier success ceiling actually comes from that randomness, I trained the same Q-learning approach again with `is_slippery=False` on both maps (`train_4x4_deterministic.py`, `train_8x8_deterministic.py`). With slipping turned off, the environment becomes fully deterministic: whatever action the agent picks is exactly the action that happens, every time, no chance of sliding somewhere else. That removes the one source of failure that even an optimal policy can't avoid on the slippery map, so there's nothing stopping the agent from reaching 100%.
+
+One thing that surprised me: I expected the 8x8 deterministic run to be simple since there's no randomness to fight, but a pure random policy still only reached the goal about 0.14% of the time, almost identical to the slippery version. Removing the slip mechanic doesn't make the map itself any smaller or the reward any less sparse, it just removes ONE source of difficulty. I had to slow down the epsilon decay and train longer (50,000 episodes instead of a naive few thousand) to give the agent enough random exploration to stumble onto the goal at least once, but once it did, learning was clean and fast since every successful path repeats exactly the same way every time.
+
+| Map | Success Rate | Average Steps | Episodes Trained |
+|---|---|---|---|
+| 4x4 slippery | 73.8% | 45.5 | 50,000 |
+| 4x4 deterministic | 100.0% | 6.0 | 5,000 |
+| 8x8 slippery | 49.4% | 72.6 | 1,200,000 |
+| 8x8 deterministic | 100.0% | 14.0 | 50,000 |
+
+Both deterministic runs hit exactly 100%, and the average steps (6.0 for 4x4, 14.0 for 8x8) line up with the known shortest paths on each map, meaning the agent isn't just occasionally getting lucky, it's found and locked onto the optimal route every single time. This is the concrete proof behind the ~70-75% ceiling claim from the slippery 4x4 section earlier: the ceiling isn't a limitation of Q-learning as an algorithm, it's a direct consequence of the environment's slip mechanic. Take the randomness away and the exact same algorithm, with no extra tricks, solves both maps perfectly.
+
+### 4x4 Deterministic Training Curve
+
+![4x4 deterministic training curve](training_curve_4x4_deterministic.png)
+
+### 4x4 Deterministic Demo
+
+![4x4 deterministic demo](demo_4x4_deterministic.gif)
+
+### 8x8 Deterministic Training Curve
+
+![8x8 deterministic training curve](training_curve_8x8_deterministic.png)
+
+### 8x8 Deterministic Demo
+
+![8x8 deterministic demo](demo_8x8_deterministic.gif)
