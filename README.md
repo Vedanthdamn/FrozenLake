@@ -37,12 +37,15 @@ This project trains on the slippery version of the map. It is the harder, more r
 
 ## Project Files
 
-- `train.py` trains the Q-learning agent and saves the Q-table to `q_table.npy`
+- `train.py` trains the Q-learning agent and saves the Q-table
 - `evaluate.py` loads the saved Q-table and reports success rate and average steps, compared against a random policy baseline
-- `demo.py` renders the trained agent solving the environment and saves the result as `demo.gif`
-- `plot_training.py` plots the training curve from the saved reward history and saves `training_curve.png`
-- `sweep.py` the script I used to try out different hyperparameter combinations, not needed to reproduce the final results
-- `train_8x8.py`, `evaluate_8x8.py`, `demo_8x8.py`, `plot_training_8x8.py` the same pipeline as above but for the harder 8x8 map, see the 8x8 comparison section below
+- `demo.py` renders the trained agent solving the environment and saves the result as a GIF
+- `plot_training.py` plots the training curve from the saved reward history
+- `q_learning.py` the actual Q-learning building blocks (action selection, the Q-table update rule, epsilon decay), shared by `train.py`
+- `frozenlake_common.py` shared config: hyperparameters per map/slippery setting and the output filenames each run produces
+- `sweep.py` the script I used to try out different hyperparameter combinations for 4x4 slippery, not needed to reproduce the final results
+
+All four scripts above take `--map {4x4,8x8}` and `--slippery`/`--no-slippery` flags, so the same script handles all four configurations (4x4 slippery, 8x8 slippery, 4x4 deterministic, 8x8 deterministic) instead of having a separate near-duplicate file per configuration. Output filenames are derived automatically from the flags, matching the filenames referenced throughout this README (for example `q_table.npy` for 4x4 slippery, `q_table_8x8.npy` for 8x8 slippery, `q_table_4x4_deterministic.npy` and `q_table_8x8_deterministic.npy` for the non-slippery runs). Internally, `train.py` uses a plain Q-learning loop for three of the four configurations, and switches to the vectorized/optimistic-init/plateau-detection approach described in the 8x8 comparison section below specifically for 8x8 slippery, since that's the one configuration that needed it.
 
 ## Installation
 
@@ -56,33 +59,33 @@ pip install -r requirements.txt
 
 ## Running
 
-Train the agent:
+Train the agent, picking a map and whether the ice is slippery:
 
 ```
-python3 train.py
+python3 train.py --map 4x4 --slippery
 ```
 
-This runs 50,000 training episodes and saves `q_table.npy` and `rewards_per_episode.npy`.
+This saves the Q-table and the reward history for that configuration (for example `q_table.npy` and `rewards_per_episode.npy` for `--map 4x4 --slippery`).
 
 Evaluate the trained agent against a random baseline:
 
 ```
-python3 evaluate.py
+python3 evaluate.py --map 4x4 --slippery
 ```
 
 Plot the training curve:
 
 ```
-python3 plot_training.py
+python3 plot_training.py --map 4x4 --slippery
 ```
 
 Generate a GIF of the trained agent solving the environment:
 
 ```
-python3 demo.py
+python3 demo.py --map 4x4 --slippery
 ```
 
-The `_8x8` scripts (`train_8x8.py`, `evaluate_8x8.py`, `plot_training_8x8.py`, `demo_8x8.py`) work the same way, just on the 8x8 map, and are run the same way, e.g. `python3 train_8x8.py`.
+Swap in `--map 8x8` and/or `--no-slippery` to run any of the other three configurations, e.g. `python3 train.py --map 8x8 --no-slippery`. Every script in this project uses the same `--map`/`--slippery` flags.
 
 ## Hyperparameter Tuning
 

@@ -1,12 +1,20 @@
+import argparse
 import numpy as np
 import gymnasium as gym
 
-env_name = "FrozenLake-v1"
-map_name = "4x4"
-is_slippery = True
+from frozenlake_common import EVAL_EPISODES, MAX_STEPS_PER_EPISODE, q_table_path
 
-num_eval_episodes = 1000
-max_steps_per_episode = 100
+parser = argparse.ArgumentParser()
+parser.add_argument("--map", choices=["4x4", "8x8"], required=True)
+parser.add_argument("--slippery", action=argparse.BooleanOptionalAction, required=True)
+args = parser.parse_args()
+
+map_name = args.map
+is_slippery = args.slippery
+env_name = "FrozenLake-v1"
+
+num_eval_episodes = EVAL_EPISODES[(map_name, is_slippery)]
+q_table_file = q_table_path(map_name, is_slippery)
 
 env = gym.make(env_name, map_name=map_name, is_slippery=is_slippery)
 
@@ -19,7 +27,7 @@ def run_episodes(policy_fn, num_episodes):
         done = False
         steps = 0
 
-        for step in range(max_steps_per_episode):
+        for step in range(MAX_STEPS_PER_EPISODE):
             action = policy_fn(state)
             state, reward, terminated, truncated, info = env.step(action)
             steps += 1
@@ -36,7 +44,7 @@ def run_episodes(policy_fn, num_episodes):
     average_steps = np.mean(step_counts)
     return success_rate, average_steps
 
-q_table = np.load("q_table.npy")
+q_table = np.load(q_table_file)
 
 def trained_policy(state):
     return np.argmax(q_table[state, :])
