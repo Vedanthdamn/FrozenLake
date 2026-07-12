@@ -2,6 +2,21 @@
 
 A tabular Q-learning agent trained from scratch to solve the FrozenLake-v1 environment from Gymnasium.
 
+## Key Findings
+
+Here's the short version, before the deep dive below. I trained the same Q-learning algorithm on four configurations: 4x4 and 8x8 maps, each with the ice either slippery or not.
+
+| Map | Success Rate | Average Steps | Episodes Trained |
+|---|---|---|---|
+| 4x4 slippery | 73.8% | 45.5 | 50,000 |
+| 4x4 deterministic | 100.0% | 6.0 | 5,000 |
+| 8x8 slippery | 49.4% | 72.6 | 1,200,000 |
+| 8x8 deterministic | 100.0% | 14.0 | 50,000 |
+
+![Training curve comparison](training_curve_comparison.png)
+
+The core takeaway: slippery mode has a real success ceiling, and it comes from the environment's randomness, not from any weakness in Q-learning. The proof is that turning slipping off (deterministic mode) lets the exact same algorithm reach ~100% on both maps, with no other changes. Separately, going from the 4x4 map to the harder 8x8 map needs a lot more training (24x more episodes for the slippery case) and still lands at a lower ceiling, since there's more to learn, longer paths, and more chances to fall in a hole along the way.
+
 ## What is Reinforcement Learning?
 
 Reinforcement learning (RL) is a way of training an agent to make decisions by letting it interact with an environment and learn from the outcomes of its actions. The agent observes a state, takes an action, and receives a reward. Over many attempts, it learns which actions lead to good outcomes and which don't, without ever being told the "correct" action directly. This is different from supervised learning, where a model is given labeled examples of correct answers.
@@ -44,8 +59,10 @@ This project trains on the slippery version of the map. It is the harder, more r
 - `q_learning.py` the actual Q-learning building blocks (action selection, the Q-table update rule, epsilon decay), shared by `train.py`
 - `frozenlake_common.py` shared config: hyperparameters per map/slippery setting and the output filenames each run produces
 - `sweep.py` the script I used to try out different hyperparameter combinations for 4x4 slippery, not needed to reproduce the final results
+- `plot_comparison.py` loads the reward history from all four configurations and plots them together on one chart, saved as `training_curve_comparison.png` (the chart in the Key Findings section above)
+- `run_all.sh` runs the full pipeline (train, evaluate, plot, demo) for all four configurations back to back, see Running below
 
-All four scripts above take `--map {4x4,8x8}` and `--slippery`/`--no-slippery` flags, so the same script handles all four configurations (4x4 slippery, 8x8 slippery, 4x4 deterministic, 8x8 deterministic) instead of having a separate near-duplicate file per configuration. Output filenames are derived automatically from the flags, matching the filenames referenced throughout this README (for example `q_table.npy` for 4x4 slippery, `q_table_8x8.npy` for 8x8 slippery, `q_table_4x4_deterministic.npy` and `q_table_8x8_deterministic.npy` for the non-slippery runs). Internally, `train.py` uses a plain Q-learning loop for three of the four configurations, and switches to the vectorized/optimistic-init/plateau-detection approach described in the 8x8 comparison section below specifically for 8x8 slippery, since that's the one configuration that needed it.
+All four main scripts (`train.py`, `evaluate.py`, `demo.py`, `plot_training.py`) take `--map {4x4,8x8}` and `--slippery`/`--no-slippery` flags, so the same script handles all four configurations (4x4 slippery, 8x8 slippery, 4x4 deterministic, 8x8 deterministic) instead of having a separate near-duplicate file per configuration. Output filenames are derived automatically from the flags, matching the filenames referenced throughout this README (for example `q_table.npy` for 4x4 slippery, `q_table_8x8.npy` for 8x8 slippery, `q_table_4x4_deterministic.npy` and `q_table_8x8_deterministic.npy` for the non-slippery runs). Internally, `train.py` uses a plain Q-learning loop for three of the four configurations, and switches to the vectorized/optimistic-init/plateau-detection approach described in the 8x8 comparison section below specifically for 8x8 slippery, since that's the one configuration that needed it.
 
 ## Installation
 
@@ -86,6 +103,8 @@ python3 demo.py --map 4x4 --slippery
 ```
 
 Swap in `--map 8x8` and/or `--no-slippery` to run any of the other three configurations, e.g. `python3 train.py --map 8x8 --no-slippery`. Every script in this project uses the same `--map`/`--slippery` flags.
+
+To reproduce all four result sets end to end (train, evaluate, plot, and demo, for all four configurations) in one command, run `./run_all.sh`. Note that the 8x8 slippery configuration alone takes several minutes since it trains for over a million episodes.
 
 ## Hyperparameter Tuning
 
@@ -167,3 +186,7 @@ Both deterministic runs hit exactly 100%, and the average steps (6.0 for 4x4, 14
 ### 8x8 Deterministic Demo
 
 ![8x8 deterministic demo](demo_8x8_deterministic.gif)
+
+## License
+
+MIT, see [LICENSE](LICENSE).
